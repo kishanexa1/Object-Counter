@@ -1,0 +1,88 @@
+#Code 
+
+#include <avr/io.h>
+#define F_CPU 1000000
+#include <util/delay.h>
+#define RS 0
+#define EN 1
+
+void lcd_comm	(char);
+void lcd_data	(char);
+void lcd_init	(void);
+void lcd_string	(char*);
+void lcd_num	(int n);
+
+
+int main(void)
+{
+	int c = 0;              // NUMBER OF TIMES BUTTON PRESSED
+	DDRA = 0x00;            // CONNECTED PUSH BUTTON TO PA0
+	
+	lcd_init();
+	lcd_comm(0x84);         //PRINT "COUNTER" ON LCD
+	lcd_string("COUNTER");  //PRINT "COUNTER"
+
+	lcd_comm(0xC5);         //OVERWRITE THE INITIAL ZERO CONDITION TO COUNTER
+	lcd_data(c+48);         //WRITE STRING IN ASCII CODE
+
+	while(1)
+	{
+		if( (PINA & 0x01) == 1 )
+		{
+			c++;
+			lcd_comm(0xC5);                  
+			lcd_num(c);                    
+			while( (PINA & 0x01) == 1 );
+		}
+	}
+}
+
+void lcd_comm(char x){
+	PORTD = x;                          //ASSIGN TO PORTD
+	PORTC &= ~(1<<RS);                  //RS=1
+
+	PORTC |= 1<<EN;                     //EN=1
+
+	_delay_ms(5);                      //DELAY BY 5MS 
+	PORTC &= ~(1<<EN);
+}
+
+void lcd_data(char x){
+	PORTD = x;          //ASSIGN TO PORTD
+	PORTC |= 1<<RS;	    //RS=0
+
+	PORTC |= 1<<EN;	    //EN=1
+	_delay_ms(5);       //DELAY BY 5MS 
+	PORTC &= ~(1<<EN);
+}
+
+void lcd_init(void){
+	DDRD = 0xFF;         //ENTIRE PORTD OUTPUT
+	DDRC = 0x03;         //E AND RS CONNECTED TO PORTC
+
+	lcd_comm(0x38);      //8-bit mode
+	lcd_comm(0x06);	     //entry mode
+	lcd_comm(0x0E);      //display on, cursor on
+	lcd_comm(0x01);      //clear screen
+	lcd_comm(0x80);      //1st row, 1st column
+}
+
+void lcd_string(char* p){
+	while(*p!='\0'){
+		lcd_data(*p);
+		p++;
+	}
+}
+
+void lcd_num(int n){
+	lcd_data((n/1000)+48);
+	n %= 1000;
+
+	lcd_data((n/100)+48);
+	n %= 100;
+
+	lcd_data((n/10)+48);
+	n %= 10;
+
+	lcd_data(n+48);
+}
